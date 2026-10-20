@@ -51,3 +51,14 @@ credential in fixtures, tests, docs or commit messages.
 - One logical change per commit. Do not reformat unrelated files.
 - The DSH bridge in `packages/dsh-web-mcp/` is optional to the Python server: it
   must never become a runtime dependency of `src/llmmcp`.
+
+## Local detail stays local
+
+- The repository is meant to be publishable. Machine, company and account
+  details such as proxy hosts, absolute install paths, account names and profile
+  patches belong in `LLMMCP_*` environment variables or `~/.llmmcp/config.json`,
+  never in a committed file. See `docs/local-setup.md`.
+- Tests read optional local values through `tests/local_env.py` and must pass on a
+  fresh clone with nothing configured.
+- Run `python tools/check_repo_hygiene.py` before publishing; it fails on
+  personal paths, corporate addresses, private hosts and real credentials.

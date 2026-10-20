@@ -13,3 +13,18 @@ htmlcov/
 *.log
 .env
 config.local.json
+
+# Local machine and company details never belong in the repository. Proxy hosts,
+# account names and absolute install paths live in ~/.llmmcp/config.json (or in
+# environment variables); see docs/local-setup.md.
+.llmmcp/
+local.env
+*.local.json
+*.local.yml
+*.local.yaml
+
+# A DSH profile patch and its backups carry absolute paths and the per-user
+# profile name, so they stay outside version control.
+cordis.patch.yml
+cordis.patch.yml.bak-*
+profiles/
