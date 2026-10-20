@@ -34,6 +34,7 @@ llmmcp = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-q"
 markers = [
     "live: tests that require real network egress (skipped by default)",

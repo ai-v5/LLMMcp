@@ -147,3 +147,20 @@ for the wiring and rollback steps.
 ## Repository rules
 
 See `AGENTS.md` for the working agreements used when developing this repository.
+
+## Local configuration and publishing
+
+Hosts, paths and account names that belong to one machine or company never enter
+the repository:
+
+- The proxy, install paths and profile directory are read from `LLMMCP_*`
+  environment variables or `~/.llmmcp/config.json`, which sits outside the
+  checkout, so `git status` stays clean. See `docs/local-setup.md`.
+- Tests use `tests/local_env.py`, which falls back to generic placeholders, so a
+  fresh clone passes offline with nothing configured.
+- Before publishing, run the gate:
+
+      python tools/check_repo_hygiene.py
+
+  It fails on absolute user paths, corporate e-mail addresses, private proxy
+  hosts, committed profile patches and real-looking credentials in URLs.
