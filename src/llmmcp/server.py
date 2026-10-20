@@ -159,7 +159,7 @@ def build_server(settings: Settings | None = None, client: Any | None = None) ->
         lang: str | None = None,
         region: str | None = None,
         recency: str | None = None,
-        timeout: float = 25.0,
+        timeout: float = 60.0,
     ) -> StructuredTool:
         if not query or not query.strip():
             raise ToolError(
@@ -209,7 +209,12 @@ def build_server(settings: Settings | None = None, client: Any | None = None) ->
             )
         except LlmmcpError as exc:
             raise _tool_error(exc) from exc
-        return _text(response.content, response.to_dict())
+        text = response.content
+        if not 200 <= int(response.status) < 300:
+            # A non-2xx answer is still a result; say so before the body so the
+            # model never mistakes an error page for page content.
+            text = f"HTTP {response.status} - {response.final_url}\n\n{text}"
+        return _text(text, response.to_dict())
 
     @server.tool(
         description=(

@@ -117,7 +117,7 @@ def test_web_search_input_schema():
     }
     assert properties["max_results"]["default"] == 8
     assert properties["engine"]["default"] == "auto"
-    assert properties["timeout"]["default"] == 25.0
+    assert properties["timeout"]["default"] == 60.0
 
 
 def test_web_fetch_input_schema():

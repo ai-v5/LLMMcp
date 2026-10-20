@@ -58,7 +58,8 @@ Or use the one-shot CLI:
 
 Arguments: `query` (required), `max_results` (default 8), `engine` (default
 `auto`; also `google`, `bing`, `gnews`), `lang`, `region`, `recency`
-(`d`/`w`/`m`/`y`), `timeout` (default 25 s).
+(`d`/`w`/`m`/`y`), `timeout` (default 60 s, because a Google render costs a
+browser launch).
 
 Returns a numbered text list plus `structuredContent` shaped as
 `{query, engine, results: [{title, url, snippet, engine}], elapsed_ms, warnings}`.
