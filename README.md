@@ -139,6 +139,10 @@ for the wiring and rollback steps.
 - Only text-like bodies are converted (`text/html`, `text/plain`,
   `application/json`, `application/xhtml+xml`); PDFs and binaries are refused
   with an explicit `UNSUPPORTED_CONTENT_TYPE` error.
+- A page whose plain HTML carries almost no text is rendered once in the
+  headless browser before conversion, so JavaScript documentation sites return
+  content instead of an empty shell. Expect a browser launch (~10-30 s) for those
+  pages.
 
 ## Repository rules
 
