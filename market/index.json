@@ -1,0 +1,89 @@
+{
+  "format": 1,
+  "title": {
+    "en": "LLMMcp plugin market",
+    "zh": "LLMMcp 插件市场"
+  },
+  "description": {
+    "en": "DSH plugins from the LLMMcp project: a bridge that serves web_search and web_fetch from a local MCP server, with automatic runtime installation.",
+    "zh": "LLMMcp 项目的 DSH 插件：把原生 web_search / web_fetch 交给本地 MCP 服务，并在需要时自动安装服务运行时。"
+  },
+  "metadata": {
+    "categories": {
+      "web": {
+        "title": {
+          "en": "Web access",
+          "zh": "网络访问"
+        }
+      }
+    },
+    "labels": {
+      "search": {
+        "title": {
+          "en": "Search",
+          "zh": "搜索"
+        }
+      },
+      "fetch": {
+        "title": {
+          "en": "Fetch",
+          "zh": "抓取"
+        }
+      },
+      "proxy": {
+        "title": {
+          "en": "Corporate proxy",
+          "zh": "企业代理"
+        }
+      }
+    },
+    "sortKeys": {
+      "added": {
+        "title": {
+          "en": "Added",
+          "zh": "加入时间"
+        },
+        "order": "desc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "llm-dsh-web-mcp",
+      "title": {
+        "en": "LLMMcp web bridge",
+        "zh": "LLMMcp 网络桥接"
+      },
+      "description": {
+        "en": "Serves the harness web_search and web_fetch tools from the LLMMcp MCP server. Google results are rendered in a local headless browser, the corporate proxy and its TLS interception are handled once, and the Python runtime is installed automatically when the machine has none.",
+        "zh": "让 DSH 原生的 web_search / web_fetch 工具改由 LLMMcp MCP 服务提供：Google 结果用本地 headless 浏览器渲染，企业代理与 TLS 中间人统一处理，机器上没有运行时会自动安装。"
+      },
+      "author": "LLMMcp contributors",
+      "homepage": "https://github.com/ai-v5/LLMMcp",
+      "repository": {
+        "url": "https://github.com/ai-v5/LLMMcp",
+        "directory": "packages/dsh-web-mcp"
+      },
+      "metadata": {
+        "category": "web",
+        "keywords": ["web-search", "web-fetch", "google", "mcp", "proxy"],
+        "labels": ["search", "fetch", "proxy"],
+        "sortKeys": {
+          "added": 20261020
+        }
+      },
+      "versions": [
+        {
+          "version": "0.1.1",
+          "publishTimestamp": 1792536671,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/ai-v5/LLMMcp",
+            "commit": "ca6b6c628cd46f4575b34d07bf951e6803b474ba",
+            "path": "packages/dsh-web-mcp"
+          }
+        }
+      ]
+    }
+  ]
+}
