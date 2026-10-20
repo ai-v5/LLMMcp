@@ -175,10 +175,9 @@ def test_binary_content_type_is_rejected():
 
 
 def test_http_error_status_is_reported():
-    with pytest.raises(Exception) as excinfo:
-        fetch(FakeClient(FakeResponse("nope", status=404)), "https://example.com/missing")
-    assert getattr(excinfo.value, "code", None) == "HTTP_STATUS"
-    assert "404" in str(excinfo.value)
+    response = fetch(FakeClient(FakeResponse("nope", status=404)), "https://example.com/missing")
+    assert response.status == 404
+    assert "nope" in response.content
 
 
 # ---------------------------------------------------------------------------

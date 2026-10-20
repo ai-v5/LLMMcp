@@ -72,12 +72,9 @@ def fetch(
 
     response = client.get(url, timeout=timeout)
     status = int(getattr(response, "status", 0))
-    if status >= 400:
-        raise FetchError(
-            f"HTTP {status} for {url}",
-            code="HTTP_STATUS",
-            hint="the server refused the request",
-        )
+    # A reachable server that answers 4xx/5xx is a result, not a transport
+    # failure: the status and whatever body it sent are what the caller asked
+    # for, and the web seam treats non-2xx the same way.
 
     headers = getattr(response, "headers", None) or {}
     content_type = str(headers.get("content-type", "") or "").split(";")[0].strip().lower()
