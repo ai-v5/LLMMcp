@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmmcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for Google web search and web fetch over a corporate proxy"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "LLMMcp contributors" }]
 keywords = ["mcp", "web-search", "web-fetch", "google", "proxy", "model-context-protocol"]
 classifiers = [
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: Microsoft :: Windows",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Topic :: Internet :: WWW/HTTP",
     "Environment :: Console",
 ]
