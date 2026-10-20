@@ -94,7 +94,10 @@ def fetch(
 
     if content_type in HTML_TYPES or content_type in ("", "text/html"):
         rendered, title = _render_markup(body, fmt, include_links)
-        if render is not None and len(rendered.strip()) < render_threshold:
+        # The raw HTML of a JavaScript shell is long while its readable text is
+        # empty, so emptiness is judged on extracted text for every format.
+        probe = rendered if fmt != "html" else html_to_text(parse_html(body))
+        if render is not None and len(probe.strip()) < render_threshold:
             rendered, title = _render_with_browser(
                 render,
                 str(getattr(response, "final_url", url) or url),
@@ -175,9 +178,19 @@ def _render_with_browser(
     if not isinstance(dom, str) or not dom.strip():
         return rendered, title
     rendered_dom, rendered_title = _render_markup(dom, fmt, include_links)
-    if len(rendered_dom.strip()) <= len(rendered.strip()):
+    # Compare readable text, not markup: for the html format the shell's inline
+    # scripts make the raw length meaningless.
+    if _readable_length(rendered_dom, fmt) <= _readable_length(rendered, fmt):
         return rendered, title
     return rendered_dom, rendered_title or title
+
+
+def _readable_length(markup: str, fmt: str) -> int:
+    """Length of the text a reader would see, whatever the output format is."""
+
+    if fmt != "html":
+        return len(markup.strip())
+    return len(html_to_text(parse_html(markup)).strip())
 
 
 def parse_html(html: str) -> BeautifulSoup:

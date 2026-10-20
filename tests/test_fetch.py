@@ -1,4 +1,4 @@
-﻿"""Offline tests for the HTML/JSON/text -> FetchResponse pipeline."""
+"""Offline tests for the HTML/JSON/text -> FetchResponse pipeline."""
 
 from __future__ import annotations
 
@@ -259,6 +259,24 @@ def test_empty_shell_is_rendered_through_the_browser():
     response = fetch(FakeClient(FakeResponse(SPA_SHELL)), "https://example.com/spa", render=fake_render)
 
     assert calls == [("https://example.com/final", 26.0)]
+    assert "Ascend docs" in response.content
+    assert response.title == "Docs"
+
+
+def test_html_format_falls_back_when_the_shell_has_no_readable_text():
+    # A shell whose raw HTML is long (inline scripts and styles) but whose
+    # readable text is empty must still be rendered: the size of the markup is
+    # not a signal of whether the page has content.
+    scripts = "<script>" + "var filler = 1;" * 200 + "</script>"
+    shell = f"<html><head>{scripts}<title>App</title></head><body><div id='root'></div></body></html>"
+
+    response = fetch(
+        FakeClient(FakeResponse(shell)),
+        "https://example.com/spa",
+        fmt="html",
+        render=lambda url, timeout: SPA_RENDERED,
+    )
+
     assert "Ascend docs" in response.content
     assert response.title == "Docs"
 
