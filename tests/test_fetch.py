@@ -236,3 +236,58 @@ def test_fetch_response_is_the_shared_contract():
     assert payload["url"] == "https://example.com/a"
     assert payload["status"] == 200
     assert payload["content"]
+
+
+# ---------------------------------------------------------------------------
+# JavaScript shell fallback
+# ---------------------------------------------------------------------------
+SPA_SHELL = "<html><head><title>App</title></head><body><div id='root'></div></body></html>"
+SPA_RENDERED = (
+    "<html><head><title>Docs</title></head><body><article><h1>Ascend docs</h1><p>"
+    + "Body text. " * 40
+    + "</p></article></body></html>"
+)
+
+
+def test_empty_shell_is_rendered_through_the_browser():
+    calls: list[tuple[str, float]] = []
+
+    def fake_render(url: str, timeout: float) -> str:
+        calls.append((url, timeout))
+        return SPA_RENDERED
+
+    response = fetch(FakeClient(FakeResponse(SPA_SHELL)), "https://example.com/spa", render=fake_render)
+
+    assert calls == [("https://example.com/final", 30.0)]
+    assert "Ascend docs" in response.content
+    assert response.title == "Docs"
+
+
+def test_render_failure_keeps_the_plain_result():
+    def boom(url: str, timeout: float) -> str:
+        raise RuntimeError("browser exploded")
+
+    response = fetch(FakeClient(FakeResponse(SPA_SHELL)), "https://example.com/spa", render=boom)
+
+    assert response.status == 200
+    assert response.content.strip() == ""
+
+
+def test_rendered_page_shorter_than_the_plain_result_is_ignored():
+    page = "<html><body><p>" + "real content " * 30 + "</p></body></html>"
+
+    response = fetch(
+        FakeClient(FakeResponse(page)),
+        "https://example.com/page",
+        render=lambda url, timeout: "<html><body>x</body></html>",
+    )
+
+    assert "real content" in response.content
+
+
+def test_without_a_renderer_the_shell_is_returned_as_is():
+    response = fetch(FakeClient(FakeResponse(SPA_SHELL)), "https://example.com/spa")
+
+    assert response.status == 200
+    assert response.content.strip() == ""
+

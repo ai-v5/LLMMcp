@@ -199,6 +199,7 @@ def build_server(settings: Settings | None = None, client: Any | None = None) ->
         include_links: bool = False,
     ) -> StructuredTool:
         try:
+            renderer = partial(render, settings=runtime.settings) if runtime.browser_path() else None
             response = fetch(
                 runtime.client,
                 url,
@@ -206,6 +207,7 @@ def build_server(settings: Settings | None = None, client: Any | None = None) ->
                 max_chars=int(max_chars),
                 timeout=float(timeout),
                 include_links=bool(include_links),
+                render=renderer,
             )
         except LlmmcpError as exc:
             raise _tool_error(exc) from exc

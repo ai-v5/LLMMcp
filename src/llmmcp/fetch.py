@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -46,11 +47,20 @@ def fetch(
     max_chars: int = 100000,
     timeout: float | None = None,
     include_links: bool = False,
+    render: Callable[[str, float], str] | None = None,
+    render_threshold: int = 200,
 ) -> FetchResponse:
     """Retrieve *url* and render it as ``markdown`` (default), ``text`` or ``html``.
 
     ``client`` is a :class:`llmmcp.http.HttpClient` (anything exposing
     ``get(url, timeout=...) -> HttpResponse`` works, which keeps this testable).
+
+    ``render`` is an optional ``(url, timeout) -> html`` callable (the headless
+    browser). Documentation sites often ship an empty shell and fill it from
+    JavaScript; when the extracted HTML is shorter than ``render_threshold``
+    characters the page is rendered once and re-extracted, so an SPA does not
+    silently return an empty document. A render failure keeps the plain HTTP
+    result instead of failing the fetch.
     """
 
     if fmt not in FORMATS:
@@ -83,15 +93,16 @@ def fetch(
     truncated = bool(getattr(response, "truncated", False))
 
     if content_type in HTML_TYPES or content_type in ("", "text/html"):
-        if fmt == "html":
-            rendered = body
-        else:
-            soup = parse_html(body)
-            title = extract_title(soup)
-            rendered = (
-                html_to_markdown(soup, include_links=include_links)
-                if fmt == "markdown"
-                else html_to_text(soup)
+        rendered, title = _render_markup(body, fmt, include_links)
+        if render is not None and len(rendered.strip()) < render_threshold:
+            rendered, title = _render_with_browser(
+                render,
+                str(getattr(response, "final_url", url) or url),
+                fmt,
+                include_links,
+                float(timeout or 30.0),
+                rendered=rendered,
+                title=title,
             )
     elif content_type in JSON_TYPES or content_type.endswith("+json"):
         rendered = pretty_json(body)
@@ -123,6 +134,50 @@ def fetch(
 # ---------------------------------------------------------------------------
 # transforms
 # ---------------------------------------------------------------------------
+def _render_markup(html: str, fmt: str, include_links: bool) -> tuple[str, str | None]:
+    """Convert one HTML document into the requested format and its title."""
+
+    if fmt == "html":
+        return html, extract_title(parse_html(html))
+    soup = parse_html(html)
+    title = extract_title(soup)
+    rendered = (
+        html_to_markdown(soup, include_links=include_links)
+        if fmt == "markdown"
+        else html_to_text(soup)
+    )
+    return rendered, title
+
+
+def _render_with_browser(
+    render: Callable[[str, float], str],
+    url: str,
+    fmt: str,
+    include_links: bool,
+    timeout: float,
+    *,
+    rendered: str,
+    title: str | None,
+) -> tuple[str, str | None]:
+    """Re-extract a JavaScript shell through the headless browser.
+
+    A page whose plain HTML carries almost no text is usually an SPA shell; the
+    browser is asked once for the settled DOM. Anything that still yields less
+    text than the plain result is discarded, so this can only improve output.
+    """
+
+    try:
+        dom = render(url, timeout)
+    except Exception:  # noqa: BLE001 - a render failure must not fail the fetch
+        return rendered, title
+    if not isinstance(dom, str) or not dom.strip():
+        return rendered, title
+    rendered_dom, rendered_title = _render_markup(dom, fmt, include_links)
+    if len(rendered_dom.strip()) <= len(rendered.strip()):
+        return rendered, title
+    return rendered_dom, rendered_title or title
+
+
 def parse_html(html: str) -> BeautifulSoup:
     """Parse HTML with the stdlib parser (no extra dependency)."""
 
