@@ -1,23 +1,23 @@
-/**
- * `web-mcp` — a cordis plugin for DeepSeek Harness that answers the `ctx.web`
+﻿/**
+ * `web-mcp` 鈥?a cordis plugin for DeepSeek Harness that answers the `ctx.web`
  * seam (search + fetch) from the local **LLMMcp** MCP server over stdio.
  *
  * Three pieces live here on purpose, so the package stays loadable from a DSH
  * profile with zero installed dependencies:
  *
- *   1. {@link McpStdioClient} — a minimal MCP client (newline-delimited JSON-RPC
- *      2.0): `initialize` → `notifications/initialized` → `tools/call`, with id
+ *   1. {@link McpStdioClient} 鈥?a minimal MCP client (newline-delimited JSON-RPC
+ *      2.0): `initialize` 鈫?`notifications/initialized` 鈫?`tools/call`, with id
  *      matching, per-call timeouts, cancellation, and respawn after an exit.
- *   2. {@link LLMMcpSearchProvider} — MCP `web_search` → `WebSearchResult`.
- *   3. {@link LLMMcpFetchProvider} — MCP `web_fetch` → `WebFetchResult`.
+ *   2. {@link LLMMcpSearchProvider} 鈥?MCP `web_search` 鈫?`WebSearchResult`.
+ *   3. {@link LLMMcpFetchProvider} 鈥?MCP `web_fetch` 鈫?`WebFetchResult`.
  *
  * Invariants this file keeps:
- *   • stdout of the host belongs to nobody. Every diagnostic goes through
+ *   鈥?stdout of the host belongs to nobody. Every diagnostic goes through
  *     `ctx.logger`; the child's stdout is the JSON-RPC channel and its stderr is
  *     drained into the logger (credential-shaped fragments redacted).
- *   • `available()` never touches the network: it only asks whether the
+ *   鈥?`available()` never touches the network: it only asks whether the
  *     configured command resolves, so provider selection stays synchronous.
- *   • Nothing is imported at module scope except Node builtins.
+ *   鈥?Nothing is imported at module scope except Node builtins.
  *
  * @module llm-dsh-web-mcp
  */
@@ -54,7 +54,7 @@ export const DEFAULTS = Object.freeze({
   toolCallTimeoutMs: 60000,
   /**
    * Per-request timeout handed to `web_search` (seconds). Derived when unset:
-   * `min(55, toolCallTimeoutMs/1000 - 5)` — Google's first search renders a page
+   * `min(55, toolCallTimeoutMs/1000 - 5)` 鈥?Google's first search renders a page
    * in a headless browser (8-20s, longer on a busy machine), so the tool default
    * of 25s is too tight.
    */
@@ -65,8 +65,14 @@ export const DEFAULTS = Object.freeze({
   initializeTimeoutMs: 30000,
   /** Start the child during plugin load instead of on the first call. */
   warmup: true,
-  /** `format` sent to `web_fetch`; HTML is what `ctx.web` consumers expect. */
-  fetchFormat: 'html',
+  /**
+   * `format` sent to `web_fetch`. Markdown is requested and then declared to the
+   * seam as `text`: the server already owns boilerplate removal and conversion,
+   * and `dsh-tool-web` falls back to its own turndown pass on `html`, which
+   * drops heavily nested application markup. Converting once is both cheaper
+   * and more predictable.
+   */
+  fetchFormat: 'markdown',
   /** `max_chars` sent to `web_fetch`; above `dsh-tool-web`'s 200k output cap. */
   fetchMaxChars: 400000,
   /** MCP protocol version requested at `initialize` (a legacy/handshake version). */
@@ -217,7 +223,7 @@ function bound(text, limit) {
   if (text.length <= limit) return text
   const head = text.slice(0, Math.floor(limit / 2))
   const tail = text.slice(text.length - Math.floor(limit / 2))
-  return `${head}…${tail}`
+  return `${head}鈥?{tail}`
 }
 
 /** Sleep helper used only by `close()`'s escalation ladder. */
@@ -262,7 +268,7 @@ function abortError() {
 }
 
 /**
- * Whether a configured command resolves without running it — the whole of
+ * Whether a configured command resolves without running it 鈥?the whole of
  * `available()`. An absolute path is checked directly; a bare name is searched
  * on `PATH` (plus Windows executable extensions).
  *
@@ -599,7 +605,7 @@ export class McpStdioClient {
     else entry.resolve(message.result ?? {})
   }
 
-  /** Answer a server→client request; only `ping` is supported. */
+  /** Answer a server鈫抍lient request; only `ping` is supported. */
   #answerServerRequest(message) {
     if (message.method === 'ping') {
       this.#write({ jsonrpc: '2.0', id: message.id, result: {} })
@@ -845,7 +851,7 @@ export class LLMMcpSearchProvider {
     const out = { sources: limited, truncated }
     if (typeof payload.answer === 'string' && payload.answer.trim() !== '') out.content = payload.answer
     this.#log.debug(
-      `web_search "${query}" → ${limited.length} source(s) in ${Date.now() - startedAt} ms (engine=${String(payload.engine ?? 'unknown')})`,
+      `web_search "${query}" 鈫?${limited.length} source(s) in ${Date.now() - startedAt} ms (engine=${String(payload.engine ?? 'unknown')})`,
     )
     return out
   }
@@ -918,11 +924,11 @@ export class LLMMcpFetchProvider {
     const out = {
       url: finalUrl,
       statusCode,
-      body: { kind: bodyKind(contentType, content), content },
+      body: { kind: bodyKind(contentType, content, this.#format), content },
       truncated: payload.truncated === true,
     }
     this.#log.debug(
-      `web_fetch ${url} → HTTP ${statusCode}, ${content.length} chars in ${Date.now() - startedAt} ms`,
+      `web_fetch ${url} 鈫?HTTP ${statusCode}, ${content.length} chars in ${Date.now() - startedAt} ms`,
     )
     return out
   }
@@ -937,7 +943,8 @@ function nonEmptyString(value) {
  * Classify a fetched body for the seam: `html` when the payload is markup (the
  * provider's own content type, or the document itself when the type is missing).
  */
-function bodyKind(contentType, content) {
+function bodyKind(contentType, content, requestedFormat = 'html') {
+  if (requestedFormat !== 'html') return 'text'
   const type = contentType.toLowerCase()
   if (type.includes('html')) return 'html'
   if (type.startsWith('text/') || type.includes('json') || type.includes('xml')) return 'text'
