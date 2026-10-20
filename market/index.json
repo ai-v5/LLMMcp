@@ -66,20 +66,30 @@
       },
       "metadata": {
         "category": "web",
-        "keywords": ["web-search", "web-fetch", "google", "mcp", "proxy"],
-        "labels": ["search", "fetch", "proxy"],
+        "keywords": [
+          "web-search",
+          "web-fetch",
+          "google",
+          "mcp",
+          "proxy"
+        ],
+        "labels": [
+          "search",
+          "fetch",
+          "proxy"
+        ],
         "sortKeys": {
           "added": 20261020
         }
       },
       "versions": [
         {
-          "version": "0.1.1",
-          "publishTimestamp": 1792536671,
+          "version": "0.1.2",
+          "publishTimestamp": 1792538367,
           "source": {
             "type": "git",
             "url": "https://github.com/ai-v5/LLMMcp",
-            "commit": "ca6b6c628cd46f4575b34d07bf951e6803b474ba",
+            "commit": "724541f9915993a265beaf8152b01a63578a4e08",
             "path": "packages/dsh-web-mcp"
           }
         }
