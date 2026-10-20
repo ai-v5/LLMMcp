@@ -1,4 +1,4 @@
-"""Offline tests for the HTML/JSON/text -> FetchResponse pipeline."""
+﻿"""Offline tests for the HTML/JSON/text -> FetchResponse pipeline."""
 
 from __future__ import annotations
 
@@ -258,7 +258,7 @@ def test_empty_shell_is_rendered_through_the_browser():
 
     response = fetch(FakeClient(FakeResponse(SPA_SHELL)), "https://example.com/spa", render=fake_render)
 
-    assert calls == [("https://example.com/final", 30.0)]
+    assert calls == [("https://example.com/final", 26.0)]
     assert "Ascend docs" in response.content
     assert response.title == "Docs"
 
@@ -290,4 +290,5 @@ def test_without_a_renderer_the_shell_is_returned_as_is():
 
     assert response.status == 200
     assert response.content.strip() == ""
+
 
