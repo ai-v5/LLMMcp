@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llmmcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "MCP server for Google web search and web fetch over a corporate proxy"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {},
-                "clientInfo": {"name": "llmmcp-smoke", "version": "0.1.1"},
+                "clientInfo": {"name": "llmmcp-smoke", "version": "0.1.2"},
             },
         )
         client.notify("notifications/initialized")

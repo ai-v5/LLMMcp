@@ -9,4 +9,4 @@ The package is laid out so each concern has one owner:
 * :mod:`llmmcp.server` exposes the MCP tools.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"

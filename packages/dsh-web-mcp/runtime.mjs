@@ -24,7 +24,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 
 /** Published wheel; override with `installSpec` when testing a local build. */
 export const DEFAULT_INSTALL_SPEC =
-  'https://github.com/ai-v5/LLMMcp/releases/download/v0.1.1/llmmcp-0.1.1-py3-none-any.whl'
+  'https://github.com/ai-v5/LLMMcp/releases/download/v0.1.2/llmmcp-0.1.2-py3-none-any.whl'
 
 /** Interpreters probed when neither config nor the local config file names one. */
 const PYTHON_CANDIDATES = process.platform === 'win32'
