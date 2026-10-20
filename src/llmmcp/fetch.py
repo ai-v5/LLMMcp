@@ -100,7 +100,9 @@ def fetch(
                 str(getattr(response, "final_url", url) or url),
                 fmt,
                 include_links,
-                float(timeout or 30.0),
+                # Leave headroom under the caller's own budget so a slow render
+                # returns the plain result instead of tripping the outer timeout.
+                max(5.0, float(timeout or 30.0) - 4.0),
                 rendered=rendered,
                 title=title,
             )
