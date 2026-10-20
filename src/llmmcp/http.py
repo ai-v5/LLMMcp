@@ -16,7 +16,9 @@ import re
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from fnmatch import fnmatchcase
 from typing import Any
+from urllib.parse import urlsplit
 
 import requests
 from requests.utils import should_bypass_proxies
@@ -29,6 +31,8 @@ RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 _CHARSET_RE = re.compile(r"charset\s*=\s*[\"']?([\w\-:.]+)", re.IGNORECASE)
 _META_CHARSET_RE = re.compile(rb"<meta[^>]+charset\s*=\s*[\"']?([\w\-:.]+)", re.IGNORECASE)
+#: Dotted-quad IPv4 literal, used to tell a loopback address from a bare hostname.
+_IPV4 = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 
 _TRUSTSTORE_APPLIED = False
 
@@ -97,8 +101,9 @@ class HttpClient:
                 "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
             }
         )
-        if self.settings.proxy.proxies:
-            session.proxies.update(dict(self.settings.proxy.proxies))
+        # The proxy is chosen per request (`proxies_for`), never on the session:
+        # a session-level proxy would also apply to a host `NO_PROXY` excludes,
+        # because `requests` merges an empty per-call mapping with the session one.
         self._configure_tls()
 
     def _configure_tls(self) -> None:
@@ -130,18 +135,53 @@ class HttpClient:
         self.tls_active = "certifi"
 
     # -- proxy helpers ---------------------------------------------------
-    def proxies_for(self, url: str) -> dict[str, str]:
-        """Proxy mapping to use for *url*, honouring ``NO_PROXY``."""
+    #: Per-request mapping that disables any proxy, including a session default.
+    #: `requests` merges an empty mapping with `session.proxies`, so bypassing
+    #: needs explicit `None` values rather than `{}`.
+    NO_PROXY: dict[str, None] = {"http": None, "https": None}
+
+    def proxies_for(self, url: str) -> dict[str, str | None]:
+        """Proxy mapping to use for *url*, honouring ``NO_PROXY``.
+
+        Windows Internet Settings express bypasses as shell-style wildcards
+        (``127.*``, ``10.*``, ``*.corp.example``) plus ``<local>``, which
+        ``requests`` does not understand, so those patterns are matched here
+        before its own suffix/CIDR check. Without this a loopback or intranet URL
+        is sent to the proxy and typically comes back as an access-denied page.
+        """
 
         proxy = self.settings.proxy
         if not proxy.enabled:
-            return {}
+            return dict(self.NO_PROXY)
+        if self._bypasses_no_proxy(url):
+            return dict(self.NO_PROXY)
         try:
             if should_bypass_proxies(url, proxy.no_proxy):
-                return {}
+                return dict(self.NO_PROXY)
         except Exception:  # pragma: no cover - malformed URL falls through to using the proxy
             return dict(proxy.proxies)
         return dict(proxy.proxies)
+
+    def _bypasses_no_proxy(self, url: str) -> bool:
+        """True when a shell-style ``NO_PROXY`` pattern covers *url*'s host."""
+
+        patterns = [item.strip().lower() for item in (self.settings.proxy.no_proxy or "").split(",")]
+        host = (urlsplit(url).hostname or "").lower()
+        if not host:
+            return False
+        for pattern in patterns:
+            if not pattern:
+                continue
+            if pattern == "<local>":
+                if "." not in host and not _IPV4.fullmatch(host):
+                    return True
+                continue
+            candidate = pattern.lstrip(".")
+            if fnmatchcase(host, pattern) or fnmatchcase(host, candidate):
+                return True
+            if pattern.startswith("*.") and host.endswith(pattern[1:]):
+                return True
+        return False
 
     def proxy_label(self) -> str | None:
         """Credential-free ``scheme://host:port (source=...)`` description."""

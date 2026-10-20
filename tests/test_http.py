@@ -241,12 +241,14 @@ def test_retry_only_for_transient_exceptions():
 # ---------------------------------------------------------------------------
 # proxy plumbing
 # ---------------------------------------------------------------------------
-def test_proxy_is_applied_to_the_session_and_requests():
+def test_proxy_is_applied_per_request_not_on_the_session():
     proxy = ProxySettings(
         proxies={"http": "http://p:8080", "https": "http://p:8080"}, source="env:HTTPS_PROXY"
     )
     client, session, _ = make_client([FakeResponse(200, chunks=(b"x",))], proxy=proxy)
-    assert session.proxies == {"http": "http://p:8080", "https": "http://p:8080"}
+    # A session-level proxy would also cover hosts NO_PROXY excludes, so the
+    # mapping is decided per request instead.
+    assert session.proxies == {}
     assert session.trust_env is False
     assert session.headers["User-Agent"] == "llmmcp-test/1.0"
     client.get("https://example.com/")
@@ -269,16 +271,40 @@ def test_no_proxy_hosts_bypass_the_proxy():
         no_proxy="internal.example,10.0.0.0/8",
     )
     client, session, _ = make_client([FakeResponse(200, chunks=(b"x",))], proxy=proxy)
-    assert client.proxies_for("https://internal.example/api") == {}
+    assert client.proxies_for("https://internal.example/api") == {"http": None, "https": None}
     client.get("https://internal.example/api")
-    assert session.calls[0][1]["proxies"] == {}
+    assert session.calls[0][1]["proxies"] == {"http": None, "https": None}
 
 
 def test_no_proxy_is_not_consulted_when_no_proxy_is_configured():
     client, session, _ = make_client([FakeResponse(200, chunks=(b"x",))])
-    assert client.proxies_for("https://example.com/") == {}
+    assert client.proxies_for("https://example.com/") == {"http": None, "https": None}
     client.get("https://example.com/")
-    assert session.calls[0][1]["proxies"] == {}
+    assert session.calls[0][1]["proxies"] == {"http": None, "https": None}
+
+
+def test_windows_style_no_proxy_wildcards_bypass_the_proxy():
+    """Windows Internet Settings write `127.*`/`10.*`/`<local>`, which requests ignores."""
+
+    proxy = ProxySettings(
+        proxies={"http": "http://p:8080", "https": "http://p:8080"},
+        source="windows-ie",
+        no_proxy="127.*,10.*,*.corp.example,localhost,<local>",
+    )
+    client, session, _ = make_client([FakeResponse(200, chunks=(b"x",))], proxy=proxy)
+
+    for url in (
+        "http://127.0.0.1:8765/market/index.json",
+        "http://10.20.30.40/docs",
+        "https://svc.corp.example/api",
+        "http://localhost:3000/",
+        "http://intranet/",
+    ):
+        assert client.proxies_for(url) == {"http": None, "https": None}, url
+
+    assert client.proxies_for("https://www.google.com/") != {"http": None, "https": None}
+    client.get("http://127.0.0.1:8765/market/index.json")
+    assert session.calls[0][1]["proxies"] == {"http": None, "https": None}
 
 
 # ---------------------------------------------------------------------------

@@ -24,7 +24,7 @@ web_fetch  工具 ─┘                        └─ LLMMcpFetchProvider ─�
 3. `autoInstall` 开启时自动安装：
    - 找一个 Python 3.10+（依次试 `config.python`、`py`、`python`、`python3`）；
    - 在 `~/.llmmcp/venv` 建 venv；
-   - `pip install` 已发布 wheel（默认取本仓库 GitHub Release 的 v0.1.1 wheel）；
+   - `pip install` 已发布 wheel（默认取本仓库 GitHub Release 的 v0.1.2 wheel）；
    - 校验 `import llmmcp` 成功后，把解释器路径写回 `~/.llmmcp/config.json`。
 
 安装失败不会影响宿主：插件照常注册 provider，`available()` 返回 false，日志给出 code 与 hint。

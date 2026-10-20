@@ -67,7 +67,7 @@ try {
         venvDir,
         autoInstall: true,
         installSpec:
-          'https://github.com/ai-v5/LLMMcp/releases/download/v0.1.1/llmmcp-0.1.1-py3-none-any.whl',
+          'https://github.com/ai-v5/LLMMcp/releases/download/v0.1.2/llmmcp-0.1.2-py3-none-any.whl',
       },
       logger,
     )
