@@ -129,6 +129,15 @@ server's search and fetch as `ctx.web` providers, which makes the harness native
 `web_search` and `web_fetch` tools run through LLMMcp. See that package's README
 for the wiring and rollback steps.
 
+The plugin is also published through a DSH plugin market index,
+`market/index.json` (format 1). Add
+`https://raw.githubusercontent.com/ai-v5/LLMMcp/main/market/index.json` as an
+index source in Discover and the plugin installs from this repository, pinned to
+a commit; on first load it installs the Python runtime itself, so a fresh machine
+needs no manual `pip install`. Validate the index after editing it:
+
+    python tools/validate_market_index.py
+
 ## Limitations
 
 - Google rendering costs a browser launch: a search takes roughly 10 to 15 s on
