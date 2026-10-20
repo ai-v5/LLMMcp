@@ -1,4 +1,4 @@
-"""Offline tests for the headless-browser layer (command building and recovery).
+﻿"""Offline tests for the headless-browser layer (command building and recovery).
 
 Nothing here launches a real browser: ``_invoke`` is monkeypatched, so the tests
 assert the command line, the profile lifecycle and the retry policy.
@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 
 import pytest
+from local_env import local_value
 
 import llmmcp.browser as browser
 from llmmcp.models import LlmmcpError
@@ -36,11 +37,12 @@ def profile_dirs(commands: list[list[str]]) -> list[str]:
 # command construction
 # ---------------------------------------------------------------------------
 def test_build_command_has_required_flags():
+    proxy = local_value("test_proxy") or "http://proxy.example.com:8080"
     command = browser.build_command(
         BROWSER,
         "https://www.google.com/search?q=ascend+npu+mfu&hl=en",
         profile_dir=r"C:\Temp\profile",
-        proxy="http://proxysg.huawei.com:8080",
+        proxy=proxy,
         user_agent="UA/1.0",
         virtual_time_budget=20000,
     )
@@ -51,7 +53,7 @@ def test_build_command_has_required_flags():
     assert "--no-first-run" in command
     assert "--no-default-browser-check" in command
     assert r"--user-data-dir=C:\Temp\profile" in command
-    assert "--proxy-server=http://proxysg.huawei.com:8080" in command
+    assert f"--proxy-server={proxy}" in command
     assert "--user-agent=UA/1.0" in command
     assert "--virtual-time-budget=20000" in command
     # The URL is the final argument and is not shell-quoted.
@@ -234,3 +236,4 @@ def test_creation_flags_are_windows_only(monkeypatch):
     assert browser._creation_flags() == 0x08000000
     monkeypatch.setattr(browser.os, "name", "posix")
     assert browser._creation_flags() == 0
+
