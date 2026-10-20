@@ -1,0 +1,15 @@
+.venv/
+.tmp/
+.dsh_worktrees/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+.env
+config.local.json
