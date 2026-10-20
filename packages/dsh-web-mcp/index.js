@@ -1,23 +1,23 @@
-﻿/**
- * `web-mcp` 鈥?a cordis plugin for DeepSeek Harness that answers the `ctx.web`
+/**
+ * `web-mcp`  - a cordis plugin for DeepSeek Harness that answers the `ctx.web`
  * seam (search + fetch) from the local **LLMMcp** MCP server over stdio.
  *
  * Three pieces live here on purpose, so the package stays loadable from a DSH
  * profile with zero installed dependencies:
  *
- *   1. {@link McpStdioClient} 鈥?a minimal MCP client (newline-delimited JSON-RPC
+ *   1. {@link McpStdioClient}  - a minimal MCP client (newline-delimited JSON-RPC
  *      2.0): `initialize` 鈫?`notifications/initialized` 鈫?`tools/call`, with id
  *      matching, per-call timeouts, cancellation, and respawn after an exit.
- *   2. {@link LLMMcpSearchProvider} 鈥?MCP `web_search` 鈫?`WebSearchResult`.
- *   3. {@link LLMMcpFetchProvider} 鈥?MCP `web_fetch` 鈫?`WebFetchResult`.
+ *   2. {@link LLMMcpSearchProvider}  - MCP `web_search` 鈫?`WebSearchResult`.
+ *   3. {@link LLMMcpFetchProvider}  - MCP `web_fetch` 鈫?`WebFetchResult`.
  *
  * Invariants this file keeps:
- *   鈥?stdout of the host belongs to nobody. Every diagnostic goes through
+ *    - stdout of the host belongs to nobody. Every diagnostic goes through
  *     `ctx.logger`; the child's stdout is the JSON-RPC channel and its stderr is
  *     drained into the logger (credential-shaped fragments redacted).
- *   鈥?`available()` never touches the network: it only asks whether the
+ *    - `available()` never touches the network: it only asks whether the
  *     configured command resolves, so provider selection stays synchronous.
- *   鈥?Nothing is imported at module scope except Node builtins.
+ *    - Nothing is imported at module scope except Node builtins.
  *
  * @module llm-dsh-web-mcp
  */
@@ -25,6 +25,8 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { delimiter, extname, isAbsolute, join } from 'node:path'
+
+import { resolveRuntime } from './runtime.mjs'
 
 /** Plugin name used by loader diagnostics. */
 export const name = 'web-mcp'
@@ -54,7 +56,7 @@ export const DEFAULTS = Object.freeze({
   toolCallTimeoutMs: 60000,
   /**
    * Per-request timeout handed to `web_search` (seconds). Derived when unset:
-   * `min(55, toolCallTimeoutMs/1000 - 5)` 鈥?Google's first search renders a page
+   * `min(55, toolCallTimeoutMs/1000 - 5)`  - Google's first search renders a page
    * in a headless browser (8-20s, longer on a busy machine), so the tool default
    * of 25s is too tight.
    */
@@ -82,6 +84,18 @@ export const DEFAULTS = Object.freeze({
   clientVersion: '0.1.0',
   /** Characters of the child's stderr kept for error messages. */
   stderrTailChars: 4000,
+  /** Install LLMMcp automatically when no configured command resolves. */
+  autoInstall: true,
+  /** Interpreter used to create the managed venv; empty probes `py`, `python`, `python3`. */
+  python: '',
+  /** Directory holding the machine-local config and the managed venv; empty means `~/.llmmcp`. */
+  llmmcpHome: '',
+  /** Managed venv directory; empty means `<llmmcpHome>/venv`. */
+  venvDir: '',
+  /** What to `pip install`; empty means the published release wheel. */
+  installSpec: '',
+  /** Budget for venv creation and `pip install` (ms). */
+  installTimeoutMs: 900000,
 })
 
 // ---------------------------------------------------------------------------
@@ -123,6 +137,12 @@ export function resolveOptions(config) {
     clientName: stringOption(raw.clientName, DEFAULTS.clientName, 'clientName'),
     clientVersion: stringOption(raw.clientVersion, DEFAULTS.clientVersion, 'clientVersion'),
     stderrTailChars: positiveIntegerOption(raw.stderrTailChars, DEFAULTS.stderrTailChars, 'stderrTailChars'),
+    autoInstall: booleanOption(raw.autoInstall, DEFAULTS.autoInstall, 'autoInstall'),
+    python: stringOption(raw.python, DEFAULTS.python, 'python'),
+    llmmcpHome: stringOption(raw.llmmcpHome, DEFAULTS.llmmcpHome, 'llmmcpHome'),
+    venvDir: stringOption(raw.venvDir, DEFAULTS.venvDir, 'venvDir'),
+    installSpec: stringOption(raw.installSpec, DEFAULTS.installSpec, 'installSpec'),
+    installTimeoutMs: positiveIntegerOption(raw.installTimeoutMs, DEFAULTS.installTimeoutMs, 'installTimeoutMs'),
   }
 }
 
@@ -223,7 +243,7 @@ function bound(text, limit) {
   if (text.length <= limit) return text
   const head = text.slice(0, Math.floor(limit / 2))
   const tail = text.slice(text.length - Math.floor(limit / 2))
-  return `${head}鈥?{tail}`
+  return `${head} ... ${tail}`
 }
 
 /** Sleep helper used only by `close()`'s escalation ladder. */
@@ -268,7 +288,7 @@ function abortError() {
 }
 
 /**
- * Whether a configured command resolves without running it 鈥?the whole of
+ * Whether a configured command resolves without running it  - the whole of
  * `available()`. An absolute path is checked directly; a bare name is searched
  * on `PATH` (plus Windows executable extensions).
  *
@@ -298,11 +318,11 @@ export function commandResolves(command) {
  * deployment can fix the command and have the provider become usable without a
  * reload.
  */
-function createCommandProbe(command) {
+function createCommandProbe(getCommand) {
   let resolved = false
   return () => {
     if (resolved) return true
-    resolved = commandResolves(command)
+    resolved = commandResolves(getCommand())
     return resolved
   }
 }
@@ -969,9 +989,12 @@ function bodyKind(contentType, content, requestedFormat = 'html') {
 export function apply(ctx, config) {
   const options = resolveOptions(config)
   const logger = createLogger(ctx)
-  const commandAvailable = createCommandProbe(options.command)
+  const commandAvailable = createCommandProbe(() => options.command)
   const env = buildChildEnv(options.env)
-  const client = new McpStdioClient({ ...options, env, logger })
+  // The client keeps its own options object, so a runtime resolved after
+  // registration has to be written into that object as well.
+  const childOptions = { ...options, env, logger }
+  const client = new McpStdioClient(childOptions)
   const shared = {
     id: options.providerId,
     client,
@@ -994,6 +1017,28 @@ export function apply(ctx, config) {
   logger.info(
     `ctx.web now has providers "${options.providerId}" (search=${options.searchTool}, fetch=${options.fetchTool}) via ${options.command || '<unset command>'}`,
   )
+
+  // A fresh machine has the plugin but no interpreter with LLMMcp installed.
+  // Resolve (and, when allowed, install) it in the background so provider
+  // registration stays synchronous and a failure never blocks the harness.
+  if (!commandResolves(options.command)) {
+    void resolveRuntime(options, logger, commandResolves).then(runtime => {
+      if (runtime === null) {
+        logger.warn(
+          `LLMMcp is not available yet; install it or set config.command to an interpreter with llmmcp (state: ${options.autoInstall ? 'auto-install failed' : 'auto-install disabled'})`,
+        )
+        return
+      }
+      options.command = runtime.command
+      childOptions.command = runtime.command
+      logger.info(`LLMMcp runtime resolved from ${runtime.source}: ${runtime.command}`)
+      if (options.warmup) {
+        void client.ensure().catch(error => {
+          logger.debug(`LLMMcp warmup after bootstrap failed: ${error instanceof Error ? error.message : String(error)}`)
+        })
+      }
+    })
+  }
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => {
