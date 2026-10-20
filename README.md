@@ -164,3 +164,16 @@ the repository:
 
   It fails on absolute user paths, corporate e-mail addresses, private proxy
   hosts, committed profile patches and real-looking credentials in URLs.
+
+## License
+
+AGPL-3.0-or-later. See `LICENSE`.
+
+The license covers the Python MCP server and the DSH bridge plugin in this
+repository. Running LLMMcp as a network service counts as distribution under the
+AGPL: if you expose a modified version to other users over a network, section 13
+requires offering them the corresponding source.
+
+The releases published before this change (`v0.1.0`) were released under MIT and
+remain available under those terms; every later release is AGPL-3.0-or-later.
+

@@ -1,6 +1,6 @@
 {
   "name": "llm-dsh-web-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "DSH (cordis) plugin that serves ctx.web search and fetch from a local LLMMcp MCP server over stdio",
   "type": "module",

@@ -81,7 +81,7 @@ export const DEFAULTS = Object.freeze({
   protocolVersion: '2025-06-18',
   /** Client identity reported to the server. */
   clientName: 'dsh-web-mcp',
-  clientVersion: '0.1.0',
+  clientVersion: '0.1.1',
   /** Characters of the child's stderr kept for error messages. */
   stderrTailChars: 4000,
   /** Install LLMMcp automatically when no configured command resolves. */
